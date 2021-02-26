@@ -51,17 +51,51 @@ exports.handler = async (event, context) => {
         "--font-render-hinting=none",
       ],
     });
-    const ctx = await browser.newContext();
+    const ctx = await browser.newContext({ acceptDownloads: true });
     const page = await ctx.newPage();
-    await page.goto(url, { waitUntil: "networkidle" });
-    const pdf = await page.pdf({ format: "A4" });
+    await page.goto('https://www.get-information-schools.service.gov.uk/Downloads?Skip=&SearchType=Latest&FilterDate.Day=16&FilterDate.Month=2&FilterDate.Year=2021');
+    // Click text=Cancel
+    await page.click('text=Cancel');
+    // Check input[name="Downloads[0].Selected"]
+    await page.check('input[name="Downloads[0].Selected"]');
+    // Check input[name="Downloads[1].Selected"]
+    await page.check('input[name="Downloads[1].Selected"]');
+    // Click input:has-text("Download selected files")
+
+    // assert.equal(page.url(), 'https://www.get-information-schools.service.gov.uk/Downloads/Generated/a5dfb61f-5802-449e-a69e-cb126835d1f1');
+    // Go to https://www.get-information-schools.service.gov.uk/Downloads/Generated/a5dfb61f-5802-449e-a69e-cb126835d1f1
+    //await page.goto('https://www.get-information-schools.service.gov.uk/Downloads/Generated/a5dfb61f-5802-449e-a69e-cb126835d1f1');
+    // Click text=Results.zip 
+
+    // "Your extract is ready"
+    // await page.click('.govuk-button');
+
+    // const [response] = await Promise.all([
+    //   page.waitForNavigation({ url: '**Generated' }),
+    page.click('input:has-text("Download selected files")');
+    // page.click('a.some-link')
+    // ]);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      // page.click('text=Results.zip')
+      page.click('input:has-text("Results.zip")')
+    ]);
+
+    // Wait for the download process to complete
+    const path = await download.path();
+    console.log("Path = " + path);
+
+    //await context.close();
+    await browser.close();
     const response = {
-      headers: { "Content-type": "application/pdf" },
+      headers: { "Content-type": "application/json" },
       statusCode: 200,
-      body: pdf.toString("base64"),
-      isBase64Encoded: true,
+      body: "{'path': "+path+"}",
+      // isBase64Encoded: true,
     };
-    context.succeed(response);
+    await context.succeed(response);
+    await context.close();
   } catch (error) {
     return context.fail(error);
   } finally {
@@ -70,3 +104,4 @@ exports.handler = async (event, context) => {
     }
   }
 };
+

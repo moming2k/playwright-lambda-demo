@@ -19,7 +19,8 @@ RUN apk add --update-cache \
     cmake \
     python3 \
     py3-pip \
-    libcurl
+    libcurl \ 
+    nano
 
 # Create function directory
 RUN mkdir -p ${FUNCTION_DIR}

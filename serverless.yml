@@ -1,4 +1,5 @@
-
+org: igpsd
+app: get-information-schools
 service: sls-lambda-docker
 
 frameworkVersion: '2'
@@ -9,6 +10,7 @@ provider:
   lambdaHashingVersion: 20201221
   stage: dev
   region: us-east-1
+  timeout: 900
   ecr:
     images:
       baseimage:
