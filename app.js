@@ -1,11 +1,18 @@
-const playwright = require("playwright-core");
+'use strict';
+const playwright = require('playwright-core');
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3({region: 'ap-east-1'});
+const fs = require('fs')
+
+process.env.DEBUG = 'pw:api,pw:browser*';
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { url } = event.queryStringParameters;
+// const { url } = event.queryStringParameters;
 
   let browser = null;
-  try {
+  let ctx = null;
+  // try {
     browser = await playwright.chromium.launch({
       headless: true,
       executablePath: "/usr/bin/chromium-browser",
@@ -51,7 +58,7 @@ exports.handler = async (event, context) => {
         "--font-render-hinting=none",
       ],
     });
-    const ctx = await browser.newContext({ acceptDownloads: true });
+    ctx = await browser.newContext({ acceptDownloads: true });
     const page = await ctx.newPage();
     await page.goto('https://www.get-information-schools.service.gov.uk/Downloads?Skip=&SearchType=Latest&FilterDate.Day=16&FilterDate.Month=2&FilterDate.Year=2021');
     // Click text=Cancel
@@ -87,21 +94,78 @@ exports.handler = async (event, context) => {
     console.log("Path = " + path);
 
     //await context.close();
-    await browser.close();
+    // await browser.close();
     const response = {
       headers: { "Content-type": "application/json" },
       statusCode: 200,
       body: "{'path': "+path+"}",
       // isBase64Encoded: true,
     };
-    await context.succeed(response);
-    await context.close();
-  } catch (error) {
-    return context.fail(error);
-  } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
-  }
+     // You should always catch your errors when using async/await
+    const rs = fs.createReadStream(path)
+    rs.on('open', () => {
+      console.log('OPEN')
+    })
+    rs.on('end', () => {
+      console.log('END')
+    })
+    rs.on('close', () => {
+      console.log('CLOSE')
+    })
+
+    await console.log('START UPLOAD');
+
+    var params = {
+      Bucket: 'uk-public-data',
+      Key: 'edubasealldata/2021_02_16' + ".zip",
+      ACL: 'private',
+      Body: rs,
+      };
+    const s3Response = await s3.upload(params).promise();
+
+    await console.log('response:')
+    await console.log(s3Response)
+
+    await ctx.close();
+    await browser.close();
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          message: 'Go Serverless v1.0! Your function executed successfully!',
+          input: event,
+        },
+        null,
+        2
+      ),
+    };
+      // callback(null, s3Response);
+  // } 
+  // catch (error) 
+  // {
+  //   console.log(error);
+  //     // callback(e);
+  //   if (ctx !== null) {
+  //     await ctx.close();
+  //   }
+  //   if (browser !== null) {
+  //     await browser.close();
+  //   }
+
+  //   return {
+  //     statusCode: 500,
+  //     body: JSON.stringify(
+  //       {
+  //         message: 'Go Serverless v1.0! Your function executed successfully!',
+  //         input: event,
+  //         error: error,
+  //       },
+  //       null,
+  //       2
+  //     ),
+  //   };
+  //   // return ctx.fail(error);
+  // } 
 };
 
